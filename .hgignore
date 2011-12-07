@@ -1,0 +1,11 @@
+syntax: glob
+
+*~
+*.dump
+*.log
+*.rrd
+deps/*
+ebin/*
+priv/log/*
+priv/www/*.png
+*.autosave

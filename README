@@ -9,3 +9,14 @@ Tested with Linux (Ubuntu and Debian) and Erlang R13B03 and R14A
 * DOWNLOAD "TAG" releases and not the latest sources that could be unstable...
 *******************************************************************************
 
+
+=== Compliling ===
+
+By now, you need to fill the ./deps by hands. Resulting deps should be like this:
+
+$ ls -l ./deps
+couchbeam
+rabbitmq-erlang-client
+rabbit_common -> rabbitmq-erlang-client/dist/rabbit_common-0.0.0
+webmachine
+

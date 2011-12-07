@@ -102,7 +102,7 @@ statistics() ->
 init([]) ->
     {ok, Durable} = ebot_util:get_env(mq_durable_queues),
     {ok, Params} = ebot_util:get_env(mq_connection_params),
-    AMQParams = #amqp_params{
+    AMQParams = #amqp_params_network{
       username =  proplists:get_value(username, Params),
       password =  proplists:get_value(password, Params),
       host =  proplists:get_value(host, Params),
