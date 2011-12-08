@@ -77,16 +77,21 @@
 			    {"User-Agent", "Mozilla/5.0 ebot/1.0-snapshot"},
 			    {"Accept-Charset", "utf-8"},
 			    {"Accept", "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8"},
-			    {"Accept-Language", "en-us,en;q=0.5"}
+			    {"Accept-Language", "en-us,en;q=0.5"},
+			    {"Accept-Encoding", "gzip, deflate"}
 			   ]},
-	 {web_http_options, [
-			     {autoredirect, true}, 
-			     {timeout, 10000}
+
+	 {web_http_request_options, [
+				%% For all options see https://github.com/cmullaparthi/ibrowse/wiki/ibrowse-API#wiki-type-optionList
+				%{proxy_host,	    "proxy.domain.com"},
+				%{proxy_port,	    3128},
+				%{inactivity_timeout, 1000},
+				%{connect_timeout,    2000},
 			    ]},
-	 {web_request_options, [
-			        %{proxy, {{"proxy.mycompany.com", 80}, ["localhost"]}}
-				%{proxy, noproxy} % erlang releases < R14A 
-			       ]}
+
+	 %% total timeout for one http request
+	 {web_http_timeout_ms, 10000}
+
 	 %% ---------------------------------------------------------
 	 %% CRAWLER
 	 %% ---------------------------------------------------------
@@ -98,5 +103,8 @@
 	 %% END ENV
 	]
   }, %% end env
-  {applications, [kernel, stdlib, crypto, inets]}]}.
+
+  {applications, [kernel, stdlib, crypto, inets]}
+ ]
+}.
 

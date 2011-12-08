@@ -15,11 +15,12 @@ Tested with Linux (Ubuntu and Debian) and Erlang R13B03 and R14A
 By now, you need to fill the ./deps by hands. Resulting deps should be like this:
 
 $ ls -l ./deps
-couchbeam
-rabbitmq-erlang-client
-rabbit_common -> rabbitmq-erlang-client/dist/rabbit_common-0.0.0
-webmachine
-riak-erlang-client
+/couchbeam
+/rabbitmq-erlang-client
+~rabbit_common -> rabbitmq-erlang-client/dist/rabbit_common-0.0.0
+/webmachine
+/riak-erlang-client
+/ibrowse
 
 See https://github.com/matteoredaelli/ebot/wiki/Installation for more info about compiling.
 

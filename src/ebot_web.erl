@@ -90,8 +90,6 @@ remove_worker(Worker) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, Options} = ebot_util:get_env(web_request_options),
-    httpc:set_options(Options),
     case ebot_util:get_env(start_workers_at_boot) of
 	{ok, true} ->
 	    State = start_workers(#state{});
@@ -188,8 +186,13 @@ run(Depth) ->
     case ebot_mq:receive_url_new(Depth) of
 	{ok, {Url, _}} ->
 	    ebot_crawler:add_visited_url(Url),
-	    Result = ebot_web_util:fetch_url_with_only_html_body(Url),
-	    ebot_mq:send_url_fetched({Url,Result});
+	    %% substitute old url with new url
+	    SendUrl = case ebot_web_util:fetch_url_with_only_html_body(Url) of
+		{ok, Url1, Response} -> {Url1, {ok, Response}};
+		E		     -> {Url, E}
+	    end,
+	    ebot_mq:send_url_fetched(SendUrl);
+
 	{error, _Reason} ->
 	    error_logger:info_report({?MODULE, ?LINE, {run, no_queued_urls, waiting}}),
 	    timer:sleep( ?EBOT_EMPTY_QUEUE_TIMEOUT )

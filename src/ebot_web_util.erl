@@ -48,10 +48,10 @@ fetch_url_with_only_html_body(Url) ->
     case Result of 
 	{error, Reason} ->
 	    {error, Reason};   
-	{ok, {_Status, Headers, _}} ->
+	{ok, Url1, {_Status, Headers, _}} ->
 	    case is_text_html_mime_url(Headers) of
 		true ->
-		    fetch_url(Url, get);
+		    fetch_url(Url1, get);
 		false ->
 		    Result
 	    end
@@ -61,7 +61,7 @@ fetch_url_links(URL) ->
     case fetch_url(URL, get) of
 	{error, Reason} ->
 	    {error, Reason};
-	{ok, {_Status, _Headers, Body}} -> 
+	{ok, _, {_Status, _Headers, Body}} -> 
 	    Links = ebot_html_util:get_links(Body, URL),
 	    {ok, Links}
     end.
@@ -69,38 +69,56 @@ fetch_url_links(URL) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-fetch_url(Url, Command) when is_binary(Url) ->
-    fetch_url(binary_to_list(Url), Command);
-fetch_url(Url, Command) ->
-    {ok, Http_header} = ebot_util:get_env(web_http_header),
-    {ok, Request_options} = ebot_util:get_env(web_request_options),
-    {ok, Http_options} = ebot_util:get_env(web_http_options),
-    try 
-	case httpc:request(Command, {Url,Http_header},Http_options,[{sync, false}|Request_options]) of
-	    {ok, RequestId} ->
-		receive 
-		    {http, {RequestId, Result}} -> 
-			case Result of 
-			    {error, AReason} ->
-				error_logger:error_report({?MODULE, ?LINE, {fetch_url, Url, error, AReason}}),
-				Result;
-			    Result ->
-				{ok, Result}
-			end
-		after ?EBOT_WEB_TIMEOUT
-		      -> 
-			error_logger:error_report({?MODULE, ?LINE, {fetch_url, Url, timeout}}),
-			{error, timeout} 
-		end;
-	    Error ->
-		error_logger:error_report({?MODULE, ?LINE, {fetch_url, Url, error, Error}}),
-		Error
-	end
+fetch_url(Url, Method) when is_binary(Url) ->
+    fetch_url(binary_to_list(Url), Method);
+fetch_url(Url, Method) ->
+    {ok, ReqHeaders} = ebot_util:get_env(web_http_header),
+    {ok, HttpRequestOptions} = ebot_util:get_env(web_http_request_options),
+    {ok, ReqTimeout} = ebot_util:get_env(web_http_timeout_ms),
+    %% ibrowse is used instead of httpc, because httpc has many issues, for example chunked transfer encoding is not supported.
+    %% ibrowse cannot do autoredirects, so to use wrapper req_autoredirect/6.
+    try req_autoredirect(Url, ReqHeaders, Method, [{response_format, binary}|HttpRequestOptions], ReqTimeout, 0) of
+
+	%% Url1 maybe or may not be equal to Url. Url1 differs from Url if one or more redirections done inside req_autoredirect/6
+	{ok, Url1, Code, RespHeaders, RespBody} ->
+	    error_logger:info_report({?MODULE, ?LINE, {fetch_url, Url1, Code, RespHeaders}}),
+	    ContentEncoding = proplists:get_value("content-encoding", RespHeaders),
+	    RespBody1 = body_decode(ContentEncoding, RespBody),
+	    {ok, Url1, {Code, RespHeaders, RespBody1}};
+
+	{error, Reason} = Result ->
+	    error_logger:error_report({?MODULE, ?LINE, {fetch_url, Url, error, Reason}}),
+	    Result
+
     catch
-	Reason -> 
+	_:Reason -> 
 	    error_logger:error_report({?MODULE, ?LINE, {fetch_url, Url, cannot_fetch_url, Reason}}),
 	    {error, Reason}
     end.
+
+
+%% wrapper around ibrowse to redirect automatically
+req_autoredirect(Url, ReqHeaders, Method, Options, ReqTimeout, N) when N < 8 ->
+    %% ibrowse:send_req(Url, ReqHeaders, Method::atom(), ReqBody, Options, Timeout) 
+    %%	  -> {ok, Code::string, RespHeaders, RespBody} | {error, req_timeout} | {error, Reason}
+    case ibrowse:send_req(Url, ReqHeaders, Method, [], Options, ReqTimeout) of
+	{ok, Code, RespHeaders, RespBody} ->
+	    case proplists:get_value("Location", RespHeaders) of
+		undefined ->
+		    %% No more redirects. Remove camel-case from response headers.
+		    RespHeaders1 = [{string:to_lower(K), V} || {K,V} <- RespHeaders],
+		    {ok, Url, Code, RespHeaders1, RespBody};
+
+		LocationUrl ->
+		    error_logger:error_report({?MODULE, ?LINE, {autoredirect, Code, Url, LocationUrl}}),
+		    req_autoredirect(LocationUrl, ReqHeaders, Method, Options, ReqTimeout, N+1)
+	    end;
+
+	E -> E
+    end;
+req_autoredirect(_, _, _, _, _, _) ->
+    {error, too_many_redirects}.
+
 
 is_text_html_mime_url(Headers) ->
     Contenttype = proplists:get_value("content-type", Headers),
@@ -115,6 +133,12 @@ is_text_html_mime_url(Headers) ->
 		    false
 	    end
     end.
+
+%% decompress responce body according to content-encoding header.
+body_decode(_, <<>> = Data)   -> Data;
+body_decode("gzip", Data)     -> zlib:gunzip(Data);
+body_decode("deflate", Data)  -> zlib:inflate(Data);
+body_decode(_, Data)	      -> Data.
 
 
 -include_lib("eunit/include/eunit.hrl").
@@ -135,7 +159,7 @@ ebot_web_util_test() ->
     ?assertEqual(true, is_text_html_mime_url(H1)),
     ?assertEqual(false, is_text_html_mime_url(H2)),
 
-    {ok,{_Status, Headers, _Body}} = fetch_url_with_only_html_body(Url),
+    {ok, Url, {_Status, Headers, _Body}} = fetch_url_with_only_html_body(Url),
     ?assertEqual(true, is_text_html_mime_url(Headers)),
 
     ExpectedUrlLinks = [<<"http://code.google.com/p/oreste/">>,

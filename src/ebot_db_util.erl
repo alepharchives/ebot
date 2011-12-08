@@ -116,8 +116,9 @@ update_doc(Db, ID, Options) ->
 	{ok, Doc} ->
 	    {ok, Doc2} = ebot_db_doc:update_doc(Doc, Options),
 	    save_doc(Db, ID, Doc2);
-	{error,Reason} ->
-	    {error,Reason}
+
+	{error, _Reason} = E ->
+	    E
     end.
 
 

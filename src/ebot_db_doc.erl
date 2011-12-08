@@ -143,8 +143,11 @@ update_doc_timestamp_by_key(Doc, Key) ->
     Value = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     update_doc_by_key_value(Doc, Key, Value).
 
+%% FIXME Bug somewhere in code: {ok,Doc} instead of Doc passed to here
+update_doc_by_key_value({ok, Doc}, Key, Value) ->
+    update_doc_by_key_value(Doc, Key, Value);
 update_doc_by_key_value(Doc, Key, Value) ->
-    %%error_logger:info_report({?MODULE, ?LINE, {update_doc_by_key_value, Key, Value, Doc}}),
+    error_logger:info_report({?MODULE, ?LINE, {update_doc_by_key_value, Key, Value, Doc}}),
     Doc2 = dict:store(Key, Value, Doc),
     {ok, Doc2}.
 

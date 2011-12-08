@@ -75,8 +75,8 @@ is_html_doc(Doc) ->
 %% Description: update a url doc using the options set by crawlers
 %%--------------------------------------------------------------------
   
-update_doc(Doc, {head, Headers, Keys}) ->
-    update_url_head_doc(Doc, Headers, Keys);
+update_doc(Doc, {head, {Status, Headers, _RespBody}, Keys}) ->
+    update_url_head_doc(Doc, Status, Headers, Keys);
 update_doc(Doc, Unknown) ->
     error_logger:error_report({?MODULE, ?LINE, {update_doc, unknown_option, Unknown}}),
     {ok, Doc}.
@@ -86,7 +86,7 @@ update_doc(Doc, Unknown) ->
 %% Description: update a doc url using the output of http:get(url, head)
 %%--------------------------------------------------------------------
 
-update_url_head_doc(Doc, Headers, Header_keys ) ->	    
+update_url_head_doc(Doc, Status, Headers, Header_keys) ->
     Doc2 = lists:foldl(
 	     fun(BKey, Document) ->
 		     Value = proplists:get_value(
@@ -103,7 +103,7 @@ update_url_head_doc(Doc, Headers, Header_keys ) ->
 	     Header_keys
 	    ),
     NewOptions = [
-		  %% {update_value, <<"http_returncode">>, Http_returncode},
+		  {update_value, <<"http_returncode">>, ebot_util:safe_list_to_binary(Status)},
 		  {update_value, <<"ebot_head_error">>, <<"">>}
 		 ],
     ebot_db_doc:update_doc(Doc2, NewOptions).

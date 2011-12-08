@@ -64,7 +64,7 @@ init([]) ->
                           "..", "priv", "dispatch.conf"])),
     WebConfig = [
 		 {ip, Ip},
-		 {port, 8000},
+		 {port, 8001},
                  {log_dir, "priv/log"},
 		 {dispatch, Dispatch}],
     Web = {webmachine_mochiweb,
@@ -72,7 +72,6 @@ init([]) ->
 	   permanent, 5000, worker, dynamic},
 
 %% EBOT processes
-
     EbotAmqp = {ebot_mq,
 	       {ebot_mq, start_link, []},
 	       permanent, 5000, worker, dynamic},
@@ -88,5 +87,8 @@ init([]) ->
     EbotWeb = {ebot_web,
 	       {ebot_web, start_link, []},
 	       permanent, 5000, worker, dynamic},
-    Processes = [EbotAmqp, EbotDb, EbotCrawler, EbotHtml, EbotWeb, Web],
+    IBrowse = {ibrowse,
+	       {ibrowse, start_link, []},
+	       permanent, 5000, worker, dynamic},
+    Processes = [EbotAmqp, EbotDb, EbotCrawler, EbotHtml, EbotWeb, Web, IBrowse],
     {ok, {{one_for_one, 10, 10}, Processes}}.
