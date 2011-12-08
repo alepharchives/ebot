@@ -204,7 +204,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 ampq_connect_and_get_channel(Params, Durable) ->
     %% Start a connection to the server
-    {ok, Connection} = amqp_connection:start(network, Params),
+    {ok, Connection} = amqp_connection:start(Params),
 
     %% Once you have a connection to the server, you can start an AMQP channel
     %% TODO : verify 

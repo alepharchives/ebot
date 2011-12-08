@@ -19,4 +19,16 @@ couchbeam
 rabbitmq-erlang-client
 rabbit_common -> rabbitmq-erlang-client/dist/rabbit_common-0.0.0
 webmachine
+riak-erlang-client
 
+See https://github.com/matteoredaelli/ebot/wiki/Installation for more info about compiling.
+
+
+=== Architecture ===
+
+https://github.com/matteoredaelli/ebot/wiki/
+
+
+=== More info ===
+
+https://github.com/matteoredaelli/ebot/wiki/_pages
