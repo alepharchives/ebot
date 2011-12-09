@@ -31,9 +31,11 @@
 %% @doc application start callback for ebot.
 start(_Type, _StartArgs) ->
     ebot_deps:ensure(),
+    ebot_util:compile_env(),
     ebot_sup:start_link().
 
 %% @spec stop(_State) -> ServerRet
 %% @doc application stop callback for ebot.
 stop(_State) ->
     ok.
+

@@ -189,6 +189,7 @@ code_change(_OldVsn, State, _Extra) ->
 run(Depth) ->
     case ebot_mq:receive_url_fetched(Depth) of
 	{ok, {Url, Result}} ->
+	    error_logger:info_report({?MODULE, ?LINE, {run, Url}}),
 	    analyze_url(Url, Result);
 	{error, _} ->
 	    error_logger:info_report({?MODULE, ?LINE, {run, no_queued_urls, waiting}}),
@@ -239,7 +240,9 @@ analyze_url_body(Url, {_Status, _Headers, <<>>}) ->
 analyze_url_body(Url, {_Status, Headers, BodyRaw}) ->
     %% decode body according to content-encoding header
     ContentEncoding = proplists:get_value("content-encoding", Headers),
-    Body = body_decode(ContentEncoding, BodyRaw),
+    Body = try body_decode(ContentEncoding, BodyRaw)
+	   catch _:_ -> BodyRaw
+	   end,
     %% analyze
     Tokens = mochiweb_html:tokens(Body),
     spawn(?MODULE, analyze_url_body_plugins, [Url, Tokens]),
@@ -316,7 +319,7 @@ analyze_url_body_plugin(Url, Tokens, Module, Function) ->
     ebot_db:update_doc(Url, Options).
 
 get_env_normalize_url(Url, [{RE,Options}|L]) ->
-    case re:run(Url, RE, [{capture, none},caseless]) of
+    case re:run(Url, RE, [{capture, none}]) of
 	match ->
 	    {ok, Options};
 	nomatch ->

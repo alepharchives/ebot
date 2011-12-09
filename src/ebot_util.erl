@@ -40,7 +40,8 @@
 	  remove_duplicates/1,
 	  safe_binary_to_list/1,
 	  safe_list_to_binary/1,
-	  string_replacements_using_regexps/2
+	  string_replacements_using_regexps/2,
+	  compile_env/0
 	 ]).
 
 %%====================================================================
@@ -86,7 +87,7 @@ merge_workers_lists(Dict1, Dict2) ->
 is_valid_using_all_regexps(String, RElist) ->
     lists:all(
       fun({Result, RE}) ->
-	      Result == re:run(String, RE, [{capture, none},caseless]) 
+	      Result == re:run(String, RE, [{capture, none}]) 
       end,
       RElist
      ).
@@ -94,7 +95,7 @@ is_valid_using_all_regexps(String, RElist) ->
 is_valid_using_any_regexps(String, RElist) ->
     lists:any(
       fun({Result, RE}) ->
-	      Result == re:run(String, RE, [{capture, none},caseless]) 
+	      Result == re:run(String, RE, [{capture, none}]) 
       end,
       RElist
      ).
@@ -126,4 +127,55 @@ string_replacements_using_regexps(String, RElist) ->
       String,
       RElist
      ).
+
+
+%% regexps precompilation will save many cpu cycles.
+compile_env() ->
+    Env = application:get_all_env(ebot),
+    F = fun
+	({IsLink, List}) when IsLink == is_valid_url orelse IsLink == is_valid_link ->
+	    List1 = compile_re_proplist(List),
+	    set_env(IsLink, List1);
+
+	({normalize_url=Par, List}) ->
+	    List1 = lists:map(fun compile_normalize_url_one/1, List),
+	    set_env(Par, List1);
+
+	(_) -> ok
+    end,
+    lists:foreach(F, Env).
+
+%% compile regexps of match/nomatch proplist (or list of match/nomatch proplists)
+compile_re_proplist([{IsMatch, ReString} | T]) when IsMatch == match orelse IsMatch == nomatch ->
+    MP = compile_one_re_match(ReString),
+    [{IsMatch, MP} | compile_re_proplist(T)];
+compile_re_proplist([{Other, [{_,_}|_]=List} | T]) ->
+    [{Other, compile_re_proplist(List)} | compile_re_proplist(T)];
+compile_re_proplist([_|T]) ->
+    compile_re_proplist(T);
+compile_re_proplist([]) ->
+    [].
+
+%% compile regexps inside {normalize_url, [{Re,Actions}]} clause
+compile_normalize_url_one({ReString, Actions}) ->
+    MP = compile_one_re_normal(ReString),
+    Actions1 = lists:map(fun compile_normalize_url_actions/1, Actions),
+    {MP, Actions1}.
+
+%% complile regexps inside normalize_url/{replace_string, [{Re,Replace}|_]} clause
+compile_normalize_url_actions({replace_string=Action, Replacements}) ->
+    F = fun({Re, Replacement}) -> {compile_one_re_normal(Re), Replacement} end,
+    {Action, lists:map(F, Replacements)};
+%% and just forward all other actions
+compile_normalize_url_actions(X) ->
+    X.
+
+compile_one_re_match(ReString)  -> compile_one_re(ReString, [caseless, no_auto_capture]).
+compile_one_re_normal(ReString) -> compile_one_re(ReString, []).
+compile_one_re(ReString, Options) ->
+    {ok, MP} = re:compile(ReString, Options),
+    MP.
+
+set_env(Par, Val) ->
+    application:set_env(ebot, Par, Val).
 
