@@ -77,7 +77,7 @@
 			    {"User-Agent", "Mozilla/5.0 ebot/1.0-snapshot"},
 			    {"Accept-Charset", "utf-8"},
 			    {"Accept", "text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8"},
-			    {"Accept-Language", "en-us,en;q=0.5"},
+			    %{"Accept-Language", "en-us,en;q=0.5"},
 			    {"Accept-Encoding", "gzip, deflate"}
 			   ]},
 

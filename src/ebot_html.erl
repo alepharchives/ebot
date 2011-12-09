@@ -189,7 +189,6 @@ code_change(_OldVsn, State, _Extra) ->
 run(Depth) ->
     case ebot_mq:receive_url_fetched(Depth) of
 	{ok, {Url, Result}} ->
-	    error_logger:info_report({?MODULE, ?LINE, {run, Url}}),
 	    analyze_url(Url, Result);
 	{error, _} ->
 	    error_logger:info_report({?MODULE, ?LINE, {run, no_queued_urls, waiting}}),
