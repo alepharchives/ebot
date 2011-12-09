@@ -220,23 +220,27 @@ analyze_url(Url,{error, Reason}) ->
     ebot_db:update_doc(Url, Options),
     {error, Reason};
 
-analyze_url(Url,{ok, {Status, Headers, Body}}) ->
-    analyze_url_head(Url, {Status, Headers, empty}),
-    analyze_url_body(Url, {empty, empty, Body}).
+analyze_url(Url, {ok, Response}) ->
+    analyze_url_head(Url, Response),
+    analyze_url_body(Url, Response).
 
-analyze_url_head(Url, Result = {_Status, _Headers, empty}) ->
+analyze_url_head(Url, Response) ->
     {ok, H} = ebot_util:get_env(tobe_saved_headers),
-    Options = [{head, Result, H}, 
-	       {update_timestamp,<<"ebot_head_visited">>},
-	       {update_counter, <<"ebot_visits_count">>},
-	       {update_value, <<"ebot_errors_count">>, 0}
+    Options = [{head, Response, H}, 
+	       {update_timestamp, <<"ebot_head_visited">>},
+	       {update_counter,	  <<"ebot_visits_count">>},
+	       {update_value,	  <<"ebot_errors_count">>, 0}
 	      ],
     ebot_db:update_doc(Url, Options).
 
-analyze_url_body(Url, {_Status, _Headers, empty}) ->
+analyze_url_body(Url, {_Status, _Headers, <<>>}) ->
     error_logger:info_report({?MODULE, ?LINE, {analyze_url_body, Url, empty_body}});
 
-analyze_url_body(Url, {_Status, _Headers, Body}) ->
+analyze_url_body(Url, {_Status, Headers, BodyRaw}) ->
+    %% decode body according to content-encoding header
+    ContentEncoding = proplists:get_value("content-encoding", Headers),
+    Body = body_decode(ContentEncoding, BodyRaw),
+    %% analyze
     Tokens = mochiweb_html:tokens(Body),
     spawn(?MODULE, analyze_url_body_plugins, [Url, Tokens]),
     error_logger:info_report({?MODULE, ?LINE, {analyze_body_plugins, Url}}),
@@ -345,6 +349,12 @@ start_workers(State) ->
       workers = ebot_worker_util:start_workers(Pool, 
 					       State#state.workers)
 	  }.
+
+%% decompress resp.body
+body_decode("gzip", Data)     -> zlib:gunzip(Data);
+body_decode("deflate", Data)  -> zlib:inflate(Data);
+body_decode(_, Data)          -> Data.
+
 
 %%====================================================================
 %% EUNIT TESTS

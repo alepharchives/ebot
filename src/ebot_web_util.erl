@@ -75,16 +75,14 @@ fetch_url(Url, Method) ->
     {ok, ReqHeaders} = ebot_util:get_env(web_http_header),
     {ok, HttpRequestOptions} = ebot_util:get_env(web_http_request_options),
     {ok, ReqTimeout} = ebot_util:get_env(web_http_timeout_ms),
-    %% ibrowse is used instead of httpc, because httpc has many issues, for example chunked transfer encoding is not supported.
+    %% ibrowse is used instead of httpc, because httpc has issues. For example, chunked transfer encoding is not fully supported.
     %% ibrowse cannot do autoredirects, so to use wrapper req_autoredirect/6.
     try req_autoredirect(Url, ReqHeaders, Method, [{response_format, binary}|HttpRequestOptions], ReqTimeout, 0) of
 
 	%% Url1 maybe or may not be equal to Url. Url1 differs from Url if one or more redirections done inside req_autoredirect/6
-	{ok, Url1, Code, RespHeaders, RespBody} ->
-	    error_logger:info_report({?MODULE, ?LINE, {fetch_url, Url1, Code, RespHeaders}}),
-	    ContentEncoding = proplists:get_value("content-encoding", RespHeaders),
-	    RespBody1 = body_decode(ContentEncoding, RespBody),
-	    {ok, Url1, {Code, RespHeaders, RespBody1}};
+	{ok, _Url1, _Response} = Result ->
+	    %% Do not decompress body right here. It will save memory on RabbitMQ-server-side.
+	    Result;
 
 	{error, Reason} = Result ->
 	    error_logger:error_report({?MODULE, ?LINE, {fetch_url, Url, error, Reason}}),
@@ -107,7 +105,7 @@ req_autoredirect(Url, ReqHeaders, Method, Options, ReqTimeout, N) when N < 8 ->
 		undefined ->
 		    %% No more redirects. Remove camel-case from response headers.
 		    RespHeaders1 = [{string:to_lower(K), V} || {K,V} <- RespHeaders],
-		    {ok, Url, Code, RespHeaders1, RespBody};
+		    {ok, Url, {Code, RespHeaders1, RespBody}};
 
 		LocationUrl ->
 		    error_logger:error_report({?MODULE, ?LINE, {autoredirect, Code, Url, LocationUrl}}),
@@ -133,12 +131,6 @@ is_text_html_mime_url(Headers) ->
 		    false
 	    end
     end.
-
-%% decompress responce body according to content-encoding header.
-body_decode(_, <<>> = Data)   -> Data;
-body_decode("gzip", Data)     -> zlib:gunzip(Data);
-body_decode("deflate", Data)  -> zlib:inflate(Data);
-body_decode(_, Data)	      -> Data.
 
 
 -include_lib("eunit/include/eunit.hrl").

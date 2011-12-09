@@ -103,7 +103,7 @@ update_doc(Doc, [{remove_from_list, Key, Value}|Options]) ->
 update_doc(Doc, [Unknown|Options]) ->
     DocType = get_doctype(Doc),
     Module = get_module(DocType),
-    error_logger:info_report({?MODULE, ?LINE, update_doc, option, Unknown, sent_to_module, Module}),
+    %error_logger:info_report({?MODULE, ?LINE, update_doc, option, Unknown, sent_to_module, Module}),
     NewDoc = case Module:update_doc(Doc, Unknown) of
 		 {ok, Doc2} ->
 		     Doc2;
@@ -147,7 +147,7 @@ update_doc_timestamp_by_key(Doc, Key) ->
 update_doc_by_key_value({ok, Doc}, Key, Value) ->
     update_doc_by_key_value(Doc, Key, Value);
 update_doc_by_key_value(Doc, Key, Value) ->
-    error_logger:info_report({?MODULE, ?LINE, {update_doc_by_key_value, Key, Value, Doc}}),
+    %error_logger:info_report({?MODULE, ?LINE, {update_doc_by_key_value, Key, Value, Doc}}),
     Doc2 = dict:store(Key, Value, Doc),
     {ok, Doc2}.
 

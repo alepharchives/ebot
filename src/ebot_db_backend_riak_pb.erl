@@ -99,6 +99,7 @@ list_keys(Db, Bucket) ->
     riakc_pb_socket:list_keys(Db, Bucket).
 
 save_doc(Db, Bucket, Key, Doc) ->
+    error_logger:info_report({?MODULE, ?LINE, Doc}),
     NewDoc = term_to_binary(Doc, [compressed]),
     case riakc_pb_socket:get(Db, Bucket, Key) of
 	{error, notfound} ->
